@@ -15,7 +15,6 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import SessionNotCreatedException
 from selenium.common.exceptions import ElementClickInterceptedException
 from selenium.common.exceptions import WebDriverException
@@ -28,22 +27,22 @@ logger = logging.getLogger(__name__)
 
 
 def conexion(chromedriver = 'sele/webdriver/chromedriver.exe', headless = True, proxy = False):
-    ''' Establecemos conexion con selenium, usando los webdriver indicados.
+    '''Establecemos conexion con selenium, usando los webdriver indicados.
         chromedriver = drivers usados por el selenium ej:'./chromedriver.exe'
         headless = ejecutar en primer plano(False) o segundo plano(True).
         proxy = True/False o una ip:port
-    ''' 
-    
+    '''
+
     driver = None
 
     try:
-        options = Options() 
+        options = Options()
         options.add_argument('--ignore-certificate-errors') # Desabilitamos para que no de error en headless
         options.add_argument('--ignore-ssl-errors') # Desabilitamos para que no de error en headless
         options.add_argument('--disable-notifications') # Desabilitamos para evitar las ventanas de notifications
         options.add_argument('--no-sandbox') # Desabilitamos la Privacy Sandbox para no dar problemas la automation
         options.add_argument('--verbose') # Desabilitamos registro detallado para no llenar la consola
-        options.add_argument('--disable-gpu') # Desabilitamos la mejora de renderizado no la necesitamos en headless 
+        options.add_argument('--disable-gpu') # Desabilitamos la mejora de renderizado no la necesitamos en headless
         options.add_argument('--disable-extensions') # Desabilitamos la extensions para no dar pistas sobre la automation
         options.add_argument('--disable-software-rasterizer') # software de rastreo???
         options.add_argument('--start-maximized') # Maximizamos pantalla para no dar pistas sobre la automation
@@ -53,11 +52,11 @@ def conexion(chromedriver = 'sele/webdriver/chromedriver.exe', headless = True, 
         try:
             ua = UserAgent()
         except FakeUserAgentError:
-            logger.exception(f"FakeUserAgentError")
+            logger.exception("FakeUserAgentError")
             userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36'
         else:
             userAgent = ua.random
-        finally:    
+        finally:
             options.add_argument(f'user-agent={userAgent}')
       
         if proxy != False: #str(ip:port)
@@ -98,8 +97,7 @@ def conexion(chromedriver = 'sele/webdriver/chromedriver.exe', headless = True, 
         
         
 def actualiza_webdriver(chromedriver):
-    '''
-    Descarga los webdriver actualizados y los copia a la ubicacion especificada
+    '''Descarga los webdriver actualizados y los copia a la ubicacion especificada
     
     chromedriver: Path de los webdriver o posicion donde los deseamos alojar. STR o PATH
     '''
@@ -112,7 +110,7 @@ def actualiza_webdriver(chromedriver):
         
         c = Path(chromedriver)
         
-        if os.path.exists(c): 
+        if os.path.exists(c):
             os.remove(c)
             
         copyfile(Path(url_filename[1]), c)
@@ -128,7 +126,7 @@ def actualiza_webdriver(chromedriver):
         
         
 def xpath_posicional(xpath, control):
-    ''' Ajustamos un xpath que necesita una posicion de control '''
+    '''Ajustamos un xpath que necesita una posicion de control '''
     
     salida = None
     
@@ -146,12 +144,13 @@ def xpath_posicional(xpath, control):
         
     
 def click(driver, xpath, wait_time = 30, control = False, log = True):
-    ''' Click en un xpath de selenium '''
+    '''Click en un xpath de selenium '''
     
     salida = None
 
     try:
-        if type(wait_time) is int:
+        """ if type(wait_time) is int: """
+        if isinstance(wait_time, int):
             wait = WebDriverWait(driver, wait_time)
             wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
 
@@ -174,7 +173,7 @@ def click(driver, xpath, wait_time = 30, control = False, log = True):
         
         
 def submit(driver, xpath, wait_time = 30):
-    ''' Submit en un xpath de selenium '''
+    '''Submit en un xpath de selenium '''
     
     salida = None
     
@@ -194,7 +193,7 @@ def submit(driver, xpath, wait_time = 30):
         
         
 def keys(driver, xpath, keys, enter = False, wait_time = 30):
-    ''' Keys en un xpath de selenium '''
+    '''Keys en un xpath de selenium '''
     
     salida = None
     
@@ -220,7 +219,7 @@ def keys(driver, xpath, keys, enter = False, wait_time = 30):
         
         
 def recoger_elementos(driver, xpath, wait_time = 30, control = 'all', log = True):
-    ''' Recogemos los elementos asociados al Xpath '''
+    '''Recogemos los elementos asociados al Xpath '''
     
     salida = None
     
@@ -249,12 +248,13 @@ def recoger_elementos(driver, xpath, wait_time = 30, control = 'all', log = True
        
         
 def recoger_elemento(driver, xpath, wait_time = 30):
-    ''' Recogemos el elemento asociados al Xpath '''
+    '''Recogemos el elemento asociados al Xpath '''
     
     salida = None
     
     try:
-        if type(wait_time) is int: 
+        """ if type(wait_time) is int: """ 
+        if isinstance(wait_time, int):
             wait = WebDriverWait(driver, wait_time)
             wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
             
@@ -271,7 +271,7 @@ def recoger_elemento(driver, xpath, wait_time = 30):
         
         
 def forzar_carga(driver, wait_time = 0.1):
-    ''' Bajamos y subimos para obligar a la carga de todas los elementos '''   
+    '''Bajamos y subimos para obligar a la carga de todas los elementos '''   
     
     salida = None
     scheight = 0.1
@@ -294,7 +294,7 @@ def forzar_carga(driver, wait_time = 0.1):
         
         
 def centrar_scroll(wde, wait_time = 0.5):
-    ''' Centramos el scroll en el webdriver_element '''
+    '''Centramos el scroll en el webdriver_element '''
     
     salida = None
            
@@ -316,29 +316,24 @@ def centrar_scroll(wde, wait_time = 0.5):
         
         
 def headers(driver):
-    '''
-    Recuperamos las cabeceras de la web
-    '''
+    '''Recuperamos las cabeceras de la web'''
     salida = None
 
     try:
-
         headers = driver.execute_script("var req = new XMLHttpRequest();req.open('GET', document.location, false);req.send(null);return req.getAllResponseHeaders()")
-        salida = headers #.splitlines()  
+        salida = headers #.splitlines()
 
     except WebDriverException:
         logger.exception('headers')
-        salida = False  
+        salida = False
     else:
-        logger.info('headers OK')    
-    finally:   
+        logger.info('headers OK')
+    finally:
         return salida
         
 
 def conexion_uc(folder = False, headless = True, proxy = False):
-    '''
-    conexion con selenium ataves del modulo undetected_chromedriver
-    '''
+    '''conexion con selenium ataves del modulo undetected_chromedriver'''
 
     try:
         # uc.ChromeOptions() no funciona con los proxy
@@ -356,11 +351,11 @@ def conexion_uc(folder = False, headless = True, proxy = False):
         try:
             ua = UserAgent()
         except FakeUserAgentError:
-            logger.exception(f"FakeUserAgentError")
+            logger.exception("FakeUserAgentError")
             userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36'
         else:
             userAgent = ua.random
-        finally:    
+        finally:
             options.add_argument(f'user-agent={userAgent}')
     
         if proxy != False: #str(ip:port)
@@ -382,8 +377,8 @@ def conexion_uc(folder = False, headless = True, proxy = False):
 
         #options.add_argument("--window-size=1920,1080")
         options.add_argument("--start-maximized")
-        # Desabilitamos para evitar las pantallas gris 
-        options.add_argument('--disable-gpu') 
+        # Desabilitamos para evitar las pantallas gris
+        options.add_argument('--disable-gpu')
         options.add_argument('--disable-extensions') # Desabilitamos la extensions para no dar pistas sobre la automation
         options.add_argument('--disable-dev-shm-usage') # Desabilitamos modo desarrollador no lo necesitamos en headless
         #--------
@@ -393,7 +388,7 @@ def conexion_uc(folder = False, headless = True, proxy = False):
         if headless:
             options.headless = True # Modo sin ventanas (segundo plano)
    
-        driver = uc.Chrome(options = options) 
+        driver = uc.Chrome(options = options)
         
     except (SessionNotCreatedException, OSError, WebDriverException):
         logger.exception('Conexion_uc')

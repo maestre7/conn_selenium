@@ -49,7 +49,7 @@ def conexion(chromedriver = 'sele/webdriver/chromedriver.exe', headless = True, 
         options.add_argument('--disable-dev-shm-usage') # Desabilitamos modo desarrollador no lo necesitamos en headless
         options.add_argument('--disable-infobars') # Desabilitamos la barra de que informa sobre la automation
 
-        try:
+        """ try:
             ua = UserAgent()
         except FakeUserAgentError:
             logger.exception("FakeUserAgentError")
@@ -57,10 +57,13 @@ def conexion(chromedriver = 'sele/webdriver/chromedriver.exe', headless = True, 
         else:
             userAgent = ua.random
         finally:
-            options.add_argument(f'user-agent={userAgent}')
+            options.add_argument(f'user-agent={userAgent}') """
+
+        options = random_user_agent(options)
       
         if proxy != False: #str(ip:port)
-            if proxy == True:
+            random_proxy(proxy)
+            """ if proxy == True:
                 req_proxy = RequestProxy() #you may get different number of proxy when  you run this at each time
                 proxies = req_proxy.get_proxy_list() #this will create proxy list
                 PROXY = proxies[choice(range(len(proxies)))].get_address()
@@ -74,7 +77,7 @@ def conexion(chromedriver = 'sele/webdriver/chromedriver.exe', headless = True, 
                                     'sslProxy': PROXY,
                                     'noProxy': '',
                                     'class': "org.openqa.selenium.Proxy",
-                                    'autodetect': False}
+                                    'autodetect': False} """
 
         if headless:
             options.headless = True # Modo sin ventanas (segundo plano)
@@ -348,7 +351,7 @@ def conexion_uc(folder = False, headless = True, proxy = False):
 
         options.user_data_dir = str(t_folder)
         
-        try:
+        """ try:
             ua = UserAgent()
         except FakeUserAgentError:
             logger.exception("FakeUserAgentError")
@@ -356,10 +359,13 @@ def conexion_uc(folder = False, headless = True, proxy = False):
         else:
             userAgent = ua.random
         finally:
-            options.add_argument(f'user-agent={userAgent}')
+            options.add_argument(f'user-agent={userAgent}') """
+
+        options = random_user_agent(options)
     
         if proxy != False: #str(ip:port)
-            if proxy == True:
+            random_proxy(proxy)
+            """ if proxy == True:
                 req_proxy = RequestProxy() #you may get different number of proxy when  you run this at each time
                 proxies = req_proxy.get_proxy_list() #this will create proxy list
                 PROXY = proxies[choice(range(len(proxies)))].get_address()
@@ -373,7 +379,7 @@ def conexion_uc(folder = False, headless = True, proxy = False):
                                     'sslProxy': PROXY,
                                     'noProxy': '',
                                     'class': "org.openqa.selenium.Proxy",
-                                    'autodetect': False}
+                                    'autodetect': False} """
 
         #options.add_argument("--window-size=1920,1080")
         options.add_argument("--start-maximized")
@@ -395,3 +401,43 @@ def conexion_uc(folder = False, headless = True, proxy = False):
         driver = False
     finally:
         return driver
+
+
+def random_user_agent(options):
+    """"we add a random user agent, if we give an error we add 
+    a fixed one different from the default of the original browser. 
+    """
+
+    try:
+        ua = UserAgent()
+    except FakeUserAgentError:
+        logger.exception("FakeUserAgentError")
+        userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36'
+    else:
+        userAgent = ua.random   
+    finally:
+        options.add_argument(f'user-agent={userAgent}')
+        
+    return options
+
+def random_proxy(proxy):
+    try:
+        if proxy == True:
+            req_proxy = RequestProxy() #you may get different number of proxy when  you run this at each time
+            proxies = req_proxy.get_proxy_list() #this will create proxy list
+            PROXY = proxies[choice(range(len(proxies)))].get_address()
+        else:
+            PROXY = proxy
+
+        capabilities = dict(DesiredCapabilities.CHROME)
+        capabilities['proxy'] = {'proxyType': 'MANUAL',
+                                'httpProxy': PROXY,
+                                'ftpProxy': PROXY,
+                                'sslProxy': PROXY,
+                                'noProxy': '',
+                                'class': "org.openqa.selenium.Proxy",
+                                'autodetect': False}
+
+    except (SessionNotCreatedException, OSError, WebDriverException):
+        logger.exception('random_proxy')
+

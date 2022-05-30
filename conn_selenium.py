@@ -26,11 +26,17 @@ from http_request_randomizer.requests.proxy.requestProxy import RequestProxy
 logger = logging.getLogger(__name__)
 
 
-def conexion(chromedriver = 'sele/webdriver/chromedriver.exe', headless = True, proxy = False):
-    '''Establecemos conexion con selenium, usando los webdriver indicados.
-        chromedriver = drivers usados por el selenium ej:'./chromedriver.exe'
-        headless = ejecutar en primer plano(False) o segundo plano(True).
-        proxy = True/False o una ip:port
+def conn_link(chromedriver = './webdriver/chromedriver.exe', headless = True, proxy = False):
+    '''We establish connection with selenium, using the indicated webdriver.
+
+    :param chromedriver: webdriver path
+    :type chromedriver: str
+    :param headless: run in foreground(False) or background(True)
+    :type headless: bool
+    :param proxy: discriminator of the use or requirement of proxy in the connection
+    :type proxy: bool, str
+    :returns: selenium driver already configured and ready to use
+    :rtype: none, object
     '''
 
     driver = None
@@ -48,7 +54,7 @@ def conexion(chromedriver = 'sele/webdriver/chromedriver.exe', headless = True, 
         options.add_argument('--start-maximized') # Maximizamos pantalla para no dar pistas sobre la automation
         options.add_argument('--disable-dev-shm-usage') # Desabilitamos modo desarrollador no lo necesitamos en headless
         options.add_argument('--disable-infobars') # Desabilitamos la barra de que informa sobre la automation
-
+        #options.add_argument('--proxy-server={}'.format('80.150.50.226:80'))
         """ try:
             ua = UserAgent()
         except FakeUserAgentError:
@@ -60,9 +66,20 @@ def conexion(chromedriver = 'sele/webdriver/chromedriver.exe', headless = True, 
             options.add_argument(f'user-agent={userAgent}') """
 
         options = random_user_agent(options)
-      
+        #print(f'options= {options}')
         if proxy != False: #str(ip:port)
-            random_proxy(proxy)
+            #PROXY = random_proxy(proxy)
+            PROXY = "80.150.50.226:80"
+            print(f'PROXY= {PROXY}')
+            #capabilities = dict(DesiredCapabilities.CHROME)
+            #capabilities['proxy'] =
+            webdriver.DesiredCapabilities.CHROME['proxy'] = {'proxyType': 'MANUAL',
+                                    'httpProxy': PROXY,
+                                    'ftpProxy': PROXY,
+                                    'sslProxy': PROXY,
+                                    'noProxy': None,
+                                    'class': "org.openqa.selenium.Proxy",
+                                    'autodetect': False}
             """ if proxy == True:
                 req_proxy = RequestProxy() #you may get different number of proxy when  you run this at each time
                 proxies = req_proxy.get_proxy_list() #this will create proxy list
@@ -84,17 +101,19 @@ def conexion(chromedriver = 'sele/webdriver/chromedriver.exe', headless = True, 
    
         driver = webdriver.Chrome(executable_path = Path(chromedriver), options = options) 
         
-    except (SessionNotCreatedException, OSError):
+    except (SessionNotCreatedException, OSError, WebDriverException):
+        logger.exception('Conn_selenium - conn_link - actualiza_webdriver')
         ok = actualiza_webdriver(chromedriver)
 
         if ok:
-            driver = conexion(chromedriver, headless)
+            driver = conn_link(chromedriver, headless)
         else:
-            logger.exception('Conn_selenium')
+            logger.exception('Conn_selenium - conn_link')
+            driver = False
         
-    except WebDriverException:
-        logger.exception('Conn_selenium')
-        driver = False
+    #except WebDriverException:
+        #logger.exception('Conn_selenium - conn_link2')
+        #driver = False
     finally:
         return driver
         
@@ -110,7 +129,7 @@ def actualiza_webdriver(chromedriver):
     try:
         CDM = ChromeDriverManager()
         url_filename = CDM.download_and_install()
-        
+        print(url_filename)
         c = Path(chromedriver)
         
         if os.path.exists(c):
@@ -152,7 +171,7 @@ def click(driver, xpath, wait_time = 30, control = False, log = True):
     salida = None
 
     try:
-        """ if type(wait_time) is int: """
+        # if type(wait_time) is int: 
         if isinstance(wait_time, int):
             wait = WebDriverWait(driver, wait_time)
             wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
@@ -201,7 +220,8 @@ def keys(driver, xpath, keys, enter = False, wait_time = 30):
     salida = None
     
     try:
-        if type(wait_time) is int:
+        #if type(wait_time) is int:
+        if isinstance(wait_time, int):
             wait = WebDriverWait(driver, wait_time)
             wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
         
@@ -227,7 +247,8 @@ def recoger_elementos(driver, xpath, wait_time = 30, control = 'all', log = True
     salida = None
     
     try:
-        if type(wait_time) is int:
+        #if type(wait_time) is int:
+        if isinstance(wait_time, int):
             wait = WebDriverWait(driver, wait_time)
             wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
 
@@ -256,7 +277,7 @@ def recoger_elemento(driver, xpath, wait_time = 30):
     salida = None
     
     try:
-        """ if type(wait_time) is int: """ 
+        #if type(wait_time) is int: 
         if isinstance(wait_time, int):
             wait = WebDriverWait(driver, wait_time)
             wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
@@ -364,7 +385,16 @@ def conexion_uc(folder = False, headless = True, proxy = False):
         options = random_user_agent(options)
     
         if proxy != False: #str(ip:port)
-            random_proxy(proxy)
+            PROXY = random_proxy(proxy)
+            print(f'PROXY= {PROXY}')
+            capabilities = dict(DesiredCapabilities.CHROME)
+            capabilities['proxy'] = {'proxyType': 'MANUAL',
+                                    'httpProxy': PROXY,
+                                    'ftpProxy': PROXY,
+                                    'sslProxy': PROXY,
+                                    'noProxy': '',
+                                    'class': "org.openqa.selenium.Proxy",
+                                    'autodetect': False}
             """ if proxy == True:
                 req_proxy = RequestProxy() #you may get different number of proxy when  you run this at each time
                 proxies = req_proxy.get_proxy_list() #this will create proxy list
@@ -421,6 +451,8 @@ def random_user_agent(options):
     return options
 
 def random_proxy(proxy):
+    PROXY = None
+
     try:
         if proxy == True:
             req_proxy = RequestProxy() #you may get different number of proxy when  you run this at each time
@@ -429,15 +461,8 @@ def random_proxy(proxy):
         else:
             PROXY = proxy
 
-        capabilities = dict(DesiredCapabilities.CHROME)
-        capabilities['proxy'] = {'proxyType': 'MANUAL',
-                                'httpProxy': PROXY,
-                                'ftpProxy': PROXY,
-                                'sslProxy': PROXY,
-                                'noProxy': '',
-                                'class': "org.openqa.selenium.Proxy",
-                                'autodetect': False}
-
     except (SessionNotCreatedException, OSError, WebDriverException):
         logger.exception('random_proxy')
+    finally:
+        return PROXY
 

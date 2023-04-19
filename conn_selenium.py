@@ -6,9 +6,10 @@ from shutil import copyfile
 from pathlib import Path
 from random import choice
 
-import undetected_chromedriver.v2 as uc
+import undetected_chromedriver as uc
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -18,247 +19,178 @@ from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import SessionNotCreatedException
 from selenium.common.exceptions import ElementClickInterceptedException
 from selenium.common.exceptions import WebDriverException
-from webdrivermanager import ChromeDriverManager  #Actualiza los webdriver del selenium
-from fake_useragent import UserAgent, FakeUserAgentError
-from http_request_randomizer.requests.proxy.requestProxy import RequestProxy
+# Actualiza los webdriver del selenium
+#from webdrivermanager import ChromeDriverManager
+from webdriver_manager.chrome import ChromeDriverManager
+#from fake_useragent import UserAgent, FakeUserAgentError
+# from http_request_randomizer.requests.proxy.requestProxy import RequestProxy
 
 
 logger = logging.getLogger(__name__)
 
+def conn_uc(headless: bool=True, folder: bool = False) -> webdriver.Chrome:
+    '''Selenium connection through undetected_chromedriver module'''
 
-def conn_link(chromedriver = './webdriver/chromedriver.exe', headless = True, proxy = False):
-    '''We establish connection with selenium, using the indicated webdriver.
+    driver = False
 
-    :param chromedriver: webdriver path
-    :type chromedriver: str
-    :param headless: run in foreground(False) or background(True)
-    :type headless: bool
-    :param proxy: discriminator of the use or requirement of proxy in the connection
-    :type proxy: bool, str
-    :returns: selenium driver already configured and ready to use
-    :rtype: none, object
-    '''
+    try:
+        # uc.ChromeOptions() no funciona con los proxy
+        # webdriver.ChromeOptions() no parece funcionar el proxy???, ni funciona headless
+        #options = webdriver.ChromeOptions()  # comprobar si funciona los proxies
+        options = uc.ChromeOptions()
 
-    driver = None
+        # Folder install UC
+        temp_folder = os.path.abspath('./uc') if folder is False else folder
+        path_folder = Path(temp_folder)
+        if not path_folder.exists():
+            path_folder.mkdir()
+
+        options.user_data_dir = str(temp_folder) # setting profile
+
+        if headless:
+            options.headless = True  # Windowless mode (second plane)
+
+        driver = uc.Chrome(options=options)
+
+        driver.maximize_window() # Maximize screen
+
+    except (SessionNotCreatedException, OSError, WebDriverException):
+        logger.exception('Conn_uc')
+        driver = False
+
+    return driver
+
+
+def conn_link(headless: bool = True) -> webdriver.Chrome:
+    '''We establish connection with selenium, using the indicated webdriver.'''
+
+    driver = False
 
     try:
         options = Options()
-        options.add_argument('--ignore-certificate-errors') # Desabilitamos para que no de error en headless
-        options.add_argument('--ignore-ssl-errors') # Desabilitamos para que no de error en headless
-        options.add_argument('--disable-notifications') # Desabilitamos para evitar las ventanas de notifications
-        options.add_argument('--no-sandbox') # Desabilitamos la Privacy Sandbox para no dar problemas la automation
-        options.add_argument('--verbose') # Desabilitamos registro detallado para no llenar la consola
-        options.add_argument('--disable-gpu') # Desabilitamos la mejora de renderizado no la necesitamos en headless
-        options.add_argument('--disable-extensions') # Desabilitamos la extensions para no dar pistas sobre la automation
-        options.add_argument('--disable-software-rasterizer') # software de rastreo???
-        options.add_argument('--start-maximized') # Maximizamos pantalla para no dar pistas sobre la automation
-        options.add_argument('--disable-dev-shm-usage') # Desabilitamos modo desarrollador no lo necesitamos en headless
-        options.add_argument('--disable-infobars') # Desabilitamos la barra de que informa sobre la automation
-        #options.add_argument('--proxy-server={}'.format('80.150.50.226:80'))
-        """ try:
-            ua = UserAgent()
-        except FakeUserAgentError:
-            logger.exception("FakeUserAgentError")
-            userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36'
-        else:
-            userAgent = ua.random
-        finally:
-            options.add_argument(f'user-agent={userAgent}') """
-
-        options = random_user_agent(options)
-        #print(f'options= {options}')
-        if proxy != False: #str(ip:port)
-            #PROXY = random_proxy(proxy)
-            PROXY = "80.150.50.226:80"
-            print(f'PROXY= {PROXY}')
-            #capabilities = dict(DesiredCapabilities.CHROME)
-            #capabilities['proxy'] =
-            webdriver.DesiredCapabilities.CHROME['proxy'] = {'proxyType': 'MANUAL',
-                                    'httpProxy': PROXY,
-                                    'ftpProxy': PROXY,
-                                    'sslProxy': PROXY,
-                                    'noProxy': None,
-                                    'class': "org.openqa.selenium.Proxy",
-                                    'autodetect': False}
-            """ if proxy == True:
-                req_proxy = RequestProxy() #you may get different number of proxy when  you run this at each time
-                proxies = req_proxy.get_proxy_list() #this will create proxy list
-                PROXY = proxies[choice(range(len(proxies)))].get_address()
-            else:
-                PROXY = proxy
-
-            capabilities = dict(DesiredCapabilities.CHROME)
-            capabilities['proxy'] = {'proxyType': 'MANUAL',
-                                    'httpProxy': PROXY,
-                                    'ftpProxy': PROXY,
-                                    'sslProxy': PROXY,
-                                    'noProxy': '',
-                                    'class': "org.openqa.selenium.Proxy",
-                                    'autodetect': False} """
-
+        
         if headless:
-            options.headless = True # Modo sin ventanas (segundo plano)
-   
-        driver = webdriver.Chrome(executable_path = Path(chromedriver), options = options) 
-        
+            options.headless = True  # Windowless mode (second plane)
+
+        # Actualiza los webdrivers automaticamente
+        driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+
+        driver.maximize_window() # Maximize screen
+
     except (SessionNotCreatedException, OSError, WebDriverException):
-        logger.exception('Conn_selenium - conn_link - actualiza_webdriver')
-        ok = actualiza_webdriver(chromedriver)
+        logger.exception('Conn_selenium - conn_link')
+        driver = False
 
-        if ok:
-            driver = conn_link(chromedriver, headless)
-        else:
-            logger.exception('Conn_selenium - conn_link')
-            driver = False
-        
-    #except WebDriverException:
-        #logger.exception('Conn_selenium - conn_link2')
-        #driver = False
-    finally:
-        return driver
-        
-        
-def actualiza_webdriver(chromedriver):
-    '''Descarga los webdriver actualizados y los copia a la ubicacion especificada
-    
-    chromedriver: Path de los webdriver o posicion donde los deseamos alojar. STR o PATH
+    return driver
+
+
+def click(driver: webdriver.Chrome, 
+          xpath: str, 
+          wait_time: float = 30, 
+          control: int|bool = False, 
+          log: bool = True) -> bool:
+    '''Click on a selenium xpath,
+    driver: drivers to run selenium
+    xpath: node element position in xpath format
+    wait_time: waiting time before giving error
+    control: position it occupies in a list of being in a
+    log: report as exception or information only
+    return: si pudo o no hacer clic en el elemento
     '''
-    
-    salida = None
-    
-    try:
-        CDM = ChromeDriverManager()
-        url_filename = CDM.download_and_install()
-        print(url_filename)
-        c = Path(chromedriver)
-        
-        if os.path.exists(c):
-            os.remove(c)
-            
-        copyfile(Path(url_filename[1]), c)
-        
-    except OSError:
-        logger.exception('actualiza_webdriver')
-        salida = False
-    else:
-        logger.info(f'actualiza_webdriver: OK, {url_filename}')
-        salida = True
-    finally:
-        return salida
-        
-        
-def xpath_posicional(xpath, control):
-    '''Ajustamos un xpath que necesita una posicion de control '''
-    
-    salida = None
-    
-    try:
-        eslabon = xpath.split(sep='[]')
-        salida = f'{eslabon[0]}[{control}]{eslabon[1]}'
-        
-    except (ValueError, AttributeError, TypeError):
-        logger.exception(f'xpath_posicional: {xpath}, {control}')
-        salida = False
-    else:
-        logger.info(f'xpath_posicional: OK, {xpath}, {control}')
-    finally:
-        return salida
-        
-    
-def click(driver, xpath, wait_time = 30, control = False, log = True):
-    '''Click en un xpath de selenium '''
-    
-    salida = None
+
+    salida = False
 
     try:
-        # if type(wait_time) is int: 
-        if isinstance(wait_time, int):
-            wait = WebDriverWait(driver, wait_time)
-            wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
+        # if type(wait_time) is int:
+        #if isinstance(wait_time, float, int):
+        wait = WebDriverWait(driver, wait_time)
+        wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
 
-        if control is False:
-            driver.find_element_by_xpath(xpath).click()
+        if control is False: # if it occupies a position in a list or not
+            driver.find_element(By.XPATH, xpath).click() #find_element_by_xpath(xpath).click()
         else:
-            driver.find_elements_by_xpath(xpath)[control].click()
-               
+            driver.find_elements(By.XPATH, xpath)[control].click()
+
     except (TimeoutException, ElementClickInterceptedException, AttributeError):
-        if log:
+        if log: # report as exception or information only
             logger.exception(f'click False: {xpath}')
         else:
             logger.info(f'click False: {xpath}')
+
         salida = False
+
     else:
         logger.info(f'click True: {xpath}')
         salida = True
-    finally:
-        return salida
-        
-        
-def submit(driver, xpath, wait_time = 30):
+
+    return salida
+
+
+def submit(driver, xpath, wait_time=30):
     '''Submit en un xpath de selenium '''
-    
+
     salida = None
-    
+
     try:
         wait = WebDriverWait(driver, wait_time)
         wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
         driver.find_element_by_xpath(xpath).submit()
         salida = True
-        
+
     except (TimeoutException, ElementClickInterceptedException, AttributeError):
         logger.exception(f'submit False: {xpath}')
         salida = False
     else:
         logger.info(f'submit True: {xpath}')
-    finally:
-        return salida
-        
-        
-def keys(driver, xpath, keys, enter = False, wait_time = 30):
+
+    return salida
+
+
+def keys(driver, xpath, keys, enter=False, wait_time=30):
     '''Keys en un xpath de selenium '''
-    
+
     salida = None
-    
+
     try:
-        #if type(wait_time) is int:
+        # if type(wait_time) is int:
         if isinstance(wait_time, int):
             wait = WebDriverWait(driver, wait_time)
             wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
-        
+
         if enter:
             driver.find_element_by_xpath(xpath).send_keys(keys + Keys.ENTER)
         else:
             driver.find_element_by_xpath(xpath).send_keys(keys)
-            
+
         salida = True
-        
+
     except (TimeoutException, ElementClickInterceptedException, AttributeError):
         logger.exception(f'keys: {xpath}, {keys}, {enter}')
         salida = False
     else:
         logger.info(f'keys OK: {xpath}, {keys}, {enter}')
-    finally:
-        return salida
-        
-        
-def recoger_elementos(driver, xpath, wait_time = 30, control = 'all', log = True):
+
+    return salida
+
+
+def recoger_elementos(driver, xpath, wait_time=30, control='all', log=True):
     '''Recogemos los elementos asociados al Xpath '''
-    
+
     salida = None
-    
+
     try:
-        #if type(wait_time) is int:
+        # if type(wait_time) is int:
         if isinstance(wait_time, int):
             wait = WebDriverWait(driver, wait_time)
             wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
 
-        if control == 'all': #Diferenciamos de todas las coincidencias o una en concreto
+        if control == 'all':  # Diferenciamos de todas las coincidencias o una en concreto
             elementos = driver.find_elements_by_xpath(xpath)
         else:
             elementos = driver.find_elements_by_xpath(xpath)[control]
 
         salida = elementos
-        
+
     except (TimeoutException, ElementClickInterceptedException, AttributeError):
         if log:
             logger.exception(f'recoger_elementos False: {xpath}')
@@ -267,170 +199,99 @@ def recoger_elementos(driver, xpath, wait_time = 30, control = 'all', log = True
         salida = False
     else:
         logger.info(f'recoger_elementos True: {xpath}')
-    finally:
-        return salida 
-       
-        
-def recoger_elemento(driver, xpath, wait_time = 30):
+    
+    return salida
+
+
+def recoger_elemento(driver, xpath, wait_time=30):
     '''Recogemos el elemento asociados al Xpath '''
-    
+
     salida = None
-    
+
     try:
-        #if type(wait_time) is int: 
+        # if type(wait_time) is int:
         if isinstance(wait_time, int):
             wait = WebDriverWait(driver, wait_time)
             wait.until(EC.element_to_be_clickable((By.XPATH, xpath)))
-            
+
         elemento = driver.find_element_by_xpath(xpath)
         salida = elemento
-        
+
     except (TimeoutException, ElementClickInterceptedException, AttributeError):
         logger.exception(f'recoger_elemento False: {xpath}')
         salida = False
     else:
         logger.info(f'recoger_elemento True: {xpath}')
-    finally:
-        return salida 
-        
-        
-def forzar_carga(driver, wait_time = 0.1):
-    '''Bajamos y subimos para obligar a la carga de todas los elementos '''   
     
+    return salida
+
+
+def forzar_carga(driver, wait_time=0.1):
+    '''Bajamos y subimos para obligar a la carga de todas los elementos '''
+
     salida = None
     scheight = 0.1
-    
+
     try:
         while scheight < 9.9:
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight/%s);" % scheight)
+            driver.execute_script(
+                "window.scrollTo(0, document.body.scrollHeight/%s);" % scheight)
             scheight += .1
             sleep(wait_time)
-            
+
         salida = True
-            
+
     except (WebDriverException, ElementClickInterceptedException):
         logger.exception('forzar_carga')
         salida = False
     else:
         logger.info('forzar_carga: OK')
-    finally:
-        return salida 
-        
-        
-def centrar_scroll(wde, wait_time = 0.5):
-    '''Centramos el scroll en el webdriver_element '''
     
+    return salida
+
+
+def centrar_scroll(wde: webdriver, wait_time: float=0.5):
+    '''Centramos el scroll en el webdriver_element '''
+
     salida = None
-           
+
     try:
         wde.location_once_scrolled_into_view
-        
+
         if wait_time != None:
             sleep(wait_time)
-            
+
         salida = True
-    
+
     except (WebDriverException, ElementClickInterceptedException):
         logger.exception('centrar_scroll')
         salida = False
     else:
         logger.info('centrar_scroll: OK')
-    finally:
-        return salida 
-        
-        
+    
+    return salida
+
+
 def headers(driver):
     '''Recuperamos las cabeceras de la web'''
     salida = None
 
     try:
-        headers = driver.execute_script("var req = new XMLHttpRequest();req.open('GET', document.location, false);req.send(null);return req.getAllResponseHeaders()")
-        salida = headers #.splitlines()
+        headers = driver.execute_script(
+            "var req = new XMLHttpRequest();req.open('GET', document.location, false);req.send(null);return req.getAllResponseHeaders()")
+        salida = headers  # .splitlines()
 
     except WebDriverException:
         logger.exception('headers')
         salida = False
     else:
         logger.info('headers OK')
-    finally:
-        return salida
-        
-
-def conexion_uc(folder = False, headless = True, proxy = False):
-    '''conexion con selenium ataves del modulo undetected_chromedriver'''
-
-    try:
-        # uc.ChromeOptions() no funciona con los proxy
-        # webdriver.ChromeOptions() no parece funcionar el proxy???, ni funciona headless
-        options = webdriver.ChromeOptions() # comprobar si funciona los proxies
-
-        t_folder = os.path.abspath('./sele/uc') if folder is False else folder
-
-        p_folder = Path(t_folder)
-        if not p_folder.exists():
-            p_folder.mkdir()
-
-        options.user_data_dir = str(t_folder)
-        
-        """ try:
-            ua = UserAgent()
-        except FakeUserAgentError:
-            logger.exception("FakeUserAgentError")
-            userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36'
-        else:
-            userAgent = ua.random
-        finally:
-            options.add_argument(f'user-agent={userAgent}') """
-
-        options = random_user_agent(options)
     
-        if proxy != False: #str(ip:port)
-            PROXY = random_proxy(proxy)
-            print(f'PROXY= {PROXY}')
-            capabilities = dict(DesiredCapabilities.CHROME)
-            capabilities['proxy'] = {'proxyType': 'MANUAL',
-                                    'httpProxy': PROXY,
-                                    'ftpProxy': PROXY,
-                                    'sslProxy': PROXY,
-                                    'noProxy': '',
-                                    'class': "org.openqa.selenium.Proxy",
-                                    'autodetect': False}
-            """ if proxy == True:
-                req_proxy = RequestProxy() #you may get different number of proxy when  you run this at each time
-                proxies = req_proxy.get_proxy_list() #this will create proxy list
-                PROXY = proxies[choice(range(len(proxies)))].get_address()
-            else:
-                PROXY = proxy
+    return salida
 
-            capabilities = dict(DesiredCapabilities.CHROME)
-            capabilities['proxy'] = {'proxyType': 'MANUAL',
-                                    'httpProxy': PROXY,
-                                    'ftpProxy': PROXY,
-                                    'sslProxy': PROXY,
-                                    'noProxy': '',
-                                    'class': "org.openqa.selenium.Proxy",
-                                    'autodetect': False} """
 
-        #options.add_argument("--window-size=1920,1080")
-        options.add_argument("--start-maximized")
-        # Desabilitamos para evitar las pantallas gris
-        options.add_argument('--disable-gpu')
-        options.add_argument('--disable-extensions') # Desabilitamos la extensions para no dar pistas sobre la automation
-        options.add_argument('--disable-dev-shm-usage') # Desabilitamos modo desarrollador no lo necesitamos en headless
-        #--------
-        #options.add_argument("--no-sandbox")
-        #options.add_argument('--disable-notifications') # Desabilitamos para evitar las ventanas de notifications
-            
-        if headless:
-            options.headless = True # Modo sin ventanas (segundo plano)
-   
-        driver = uc.Chrome(options = options)
-        
-    except (SessionNotCreatedException, OSError, WebDriverException):
-        logger.exception('Conexion_uc')
-        driver = False
-    finally:
-        return driver
+    
+    
 
 
 def random_user_agent(options):
@@ -444,25 +305,43 @@ def random_user_agent(options):
         logger.exception("FakeUserAgentError")
         userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36'
     else:
-        userAgent = ua.random   
+        userAgent = ua.random
     finally:
         options.add_argument(f'user-agent={userAgent}')
-        
+
     return options
+
 
 def random_proxy(proxy):
     PROXY = None
 
     try:
         if proxy == True:
-            req_proxy = RequestProxy() #you may get different number of proxy when  you run this at each time
-            proxies = req_proxy.get_proxy_list() #this will create proxy list
+            # you may get different number of proxy when  you run this at each time
+            req_proxy = RequestProxy()
+            proxies = req_proxy.get_proxy_list()  # this will create proxy list
             PROXY = proxies[choice(range(len(proxies)))].get_address()
         else:
             PROXY = proxy
 
     except (SessionNotCreatedException, OSError, WebDriverException):
         logger.exception('random_proxy')
-    finally:
-        return PROXY
+    
+    return PROXY
 
+def xpath_posicional(xpath, control):
+    '''Ajustamos un xpath que necesita una posicion de control '''
+
+    salida = None
+
+    try:
+        eslabon = xpath.split(sep='[]')
+        salida = f'{eslabon[0]}[{control}]{eslabon[1]}'
+
+    except (ValueError, AttributeError, TypeError):
+        logger.exception(f'xpath_posicional: {xpath}, {control}')
+        salida = False
+    else:
+        logger.info(f'xpath_posicional: OK, {xpath}, {control}')
+
+    return salida
